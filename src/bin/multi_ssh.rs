@@ -121,7 +121,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     }
                 }
             }
-            Err(ReadlineError::Interrupted | ReadlineError::Eof) => {
+            Err(ReadlineError::Interrupted) => {
+                continue;
+            }
+            Err(ReadlineError::Eof) => {
                 break;
             }
             Err(err) => {

@@ -12,13 +12,13 @@ Multi-ssh takes care of running same command across multiple instances and print
 ### Usage
 
 #### Command runner
-`multi_ssh  --tag cluster_dev --config node_config.json shell`
+`multi-ssh  --tag cluster_dev --config node_config.json shell`
 
 (shell here is optional)
 
 #### Copy files
 
-`multi_ssh  --tag cluster_alph --config node_config.json copy`
+`multi-ssh  --tag cluster_alph --config node_config.json copy`
 
 ### Config file
 

@@ -108,14 +108,21 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             join_all(all_sessions.iter_mut().map(|x| x.run_command(&line))).await;
                         }
                         Commands::Copy => {
-                            join_all(
-                                line.split(",")
-                                    .map(Path::new)
-                                    .filter(|path| path.exists())
-                                    .map(|file| {
-                                        join_all(all_sessions.iter().map(|x| x.copy_file(&file)))
-                                    }),
-                            )
+                            let mut only_files = vec![];
+                            for file in line.split(",") {
+                                let file = Path::new(file);
+                                if file.exists() && file.is_file() {
+                                    only_files.push(file);
+                                } else {
+                                    println!("File: {:?} doesn't exist or not a file", file);
+                                }
+                            }
+                            if only_files.is_empty() {
+                                println!("No files to copy, ReEnter files with `,` seperated");
+                            }
+                            join_all(only_files.iter().map(|file| {
+                                join_all(all_sessions.iter().map(|x| x.copy_file(&file)))
+                            }))
                             .await;
                         }
                     }

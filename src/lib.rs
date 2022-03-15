@@ -1,7 +1,7 @@
 use openssh::*;
-
 use serde::{Deserialize, Serialize};
-use std::{error::Error, path::Path};
+use std::io::ErrorKind::InvalidInput;
+use std::{error::Error, path::Path, process::Output};
 use tokio::io::{stderr, stdout, AsyncWriteExt};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -23,44 +23,56 @@ impl NodeSession {
         let status = self.session.raw_command(command).output().await;
         match status {
             Ok(output) => {
+                self.print_output(output).await?;
+                Ok(())
+            }
+            Err(openssh::Error::Disconnected) => {
                 println!(
-                    "**********************************       {}           *****************************",
+                    "node: {} disconnected! trying to connect again.",
                     self.node.public_address
                 );
-                if !output.stdout.is_empty() {
-                    stdout().write_all(&output.stdout).await?;
-                }
-                if !output.stderr.is_empty() {
-                    stderr().write_all(&output.stdout).await?;
-                }
-                println!("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",);
+                self.session = self.node.connect().await?;
+                self.print_output(self.session.raw_command(command).output().await?)
+                    .await?;
+                Ok(())
             }
-            Err(err) => match err {
-                openssh::Error::Disconnected => {
-                    println!(
-                        "node: {} disconnected! trying to connect again.",
-                        self.node.public_address
-                    );
-                    let node_session = self.node.connect().await?;
-                    println!("node: {} connected", self.node.public_address);
-                    self.session = node_session;
-                }
-                _ => println!("unhanlded error: {}", err),
-            },
+            Err(err) => Err(err)?,
         }
-        Ok(())
     }
 
     pub async fn copy_file(&self, file: &Path) -> Result<(), Box<dyn Error>> {
-        let mut remote_file = self.session.sftp().write_to(file.file_name().unwrap()).await?;
+        // need to confirm everytime.
+        // because of immutable copy
+        let remote_file_path = &file.file_name().ok_or(std::io::Error::from(InvalidInput))?;
+        // if self.session.check().await.is_err() {
+        //     self.session = self.node.connect().await?
+        // }
+        let mut remote_file = self.session.sftp().write_to(remote_file_path).await?;
         let mut local_file = tokio::fs::File::open(file).await?;
         tokio::io::copy(&mut local_file, &mut remote_file).await?;
-        println!("{:?} copied to {}", file.file_name().as_ref().unwrap(), self.node.public_address);
+        println!(
+            "{:?} copied to {}",
+            remote_file_path, self.node.public_address
+        );
         Ok(())
     }
 
     pub async fn close(self) -> Result<(), openssh::Error> {
         self.session.close().await
+    }
+
+    async fn print_output(&self, output: Output) -> Result<(), Box<dyn Error>> {
+        println!(
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━     {}    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            self.node.public_address
+        );
+        if !output.stdout.is_empty() {
+            stdout().write_all(&output.stdout).await?;
+        }
+        if !output.stderr.is_empty() {
+            stderr().write_all(&output.stdout).await?;
+        }
+        Ok(())
     }
 }
 

@@ -14,3 +14,7 @@ futures = "0.3.21"
 rustyline = "9.1.2"
 shellexpand = "2.1.0"
 clap = {version="*", features=["derive"]}
+
+[[bin]]
+name = "multi-ssh"
+path = "src/bin/multi_ssh.rs"

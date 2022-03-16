@@ -11,14 +11,13 @@ Multi-ssh takes care of running same command across multiple instances and print
 
 ### Usage
 
-#### Command runner
-`multi-ssh  --tag cluster_dev --config node_config.json shell`
+`multi-ssh  --tag cluster_dev --config node_config.json`
 
-(shell here is optional)
+Run commands like a ssh-shell.
 
-#### Copy files
+To copy files from local to all remote nodes, follow below format
 
-`multi-ssh  --tag cluster_alph --config node_config.json copy`
+`.copy  <list of files in `,` seperated>` (inspired from sqlite shell)
 
 ### Config file
 
